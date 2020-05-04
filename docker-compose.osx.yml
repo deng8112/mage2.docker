@@ -113,10 +113,8 @@ services:
   node:
     container_name: ${NAMESPACE}_node
     image: osioaliu/node:${NODE_VERSION}-alpine
+    tty: true
     working_dir: /home/$USER/html
-    environment:
-      USER: ${USER}
-    entrypoint: ["docker-entrypoint.sh"]
     volumes:
       - app_data:/home/$USER/html:delegated
 
