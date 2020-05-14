@@ -126,6 +126,18 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 30
 
+  node:
+    build:
+      context: ./.docker/node
+      args:
+        IMAGE: node:${NODE_VERSION}-alpine
+    container_name: ${NAMESPACE}_node
+    image: osioaliu/node:${NODE_VERSION}-alpine
+    tty: true
+    working_dir: /home/$USER/html
+    volumes:
+      - app_data:/home/$USER/html:delegated
+
 volumes:
   php_socket:
   redis_data_socket:
