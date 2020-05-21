@@ -1,16 +1,16 @@
 ## Magento 2 OSX/Linux Docker
 
-**Nginx(Pagespeed), MariaDB, PHP 7, Redis, Elasticsearch, Mailhog, Watchtower**
+**[Nginx with Pagespeed](https://en.wikipedia.org/wiki/Google_PageSpeed_Tools#PageSpeed_Module), [MariaDB](https://en.wikipedia.org/wiki/MariaDB), [PHP 7](https://en.wikipedia.org/wiki/PHP), [Redis](https://redis.io/), [Elasticsearch](https://en.wikipedia.org/wiki/Elasticsearch), [Mailhog](https://github.com/mailhog/MailHog), [Watchtower](https://containrrr.github.io/watchtower/)**
 
 This setsup containers for Magento 2. 
 * Good Docker Performance on **MacOS** by using [http://docker-sync.io/ ](http://docker-sync.io/)
 * Change settings under `.env` in root folder  
 * Change **PHP Versions 7.1, 7.2, 7.3 with xdebug** all based on **php:alpine** docker images
-* PHP, MariaDB, Redis containers connect via sockets
+* PHP, Redis containers connect via sockets
 * `install.sh` can include your **running project** files with its DB Dump or Magento Sample Data
 * `install.sh` can create **fresh Magento 2 Install**
 * `install.sh` can create **fresh Magento Install with Sample Data**
-* A preconfigured `env.php` connects to mariadb via sockets, redis via sockets with `install.sh`
+* A preconfigured `env.php` connects to mariadb, redis via sockets with `install.sh`
 * Elastic Search container ist preconfigured per SQL insert/update with `install.sh`
 
 > be sure to use `allure-framework/allure-phpunit` `1.2.3` instead of `1.2.0` due to this [issue](https://github.com/docker-library/php/issues/719) 
@@ -19,8 +19,9 @@ This setsup containers for Magento 2.
 **MacOS:**
 Install [Docker](https://docs.docker.com/docker-for-mac/install/)
 
-**Linux:**
+**Linux:** 
 Install [Docker](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/) and [Docker-compose](https://docs.docker.com/compose/install/#install-compose).
+> Use `docker.sh` to install `docker` and `docker-compose` on debian or Ubuntu based Systems
 
 ### Get Source
 
@@ -101,6 +102,7 @@ On OSX see link: https://stackoverflow.com/questions/41192680/update-max-map-cou
 * Fresh Install or use magento 2 project on your file system using `./install.sh`
 * Nginx uses http2
 * alternative **OSX docker-compose** file using docker-sync **for better performance**
+* set Magento 2 Versions as configurable option of `ìnstall.sh`
 * using watchtower container to keep the containers current
 * set project directory to where ever you want (as configurable option in .env)
 * set PHP-FPM minor Versions under 7 (7.0, 7.1, 7.2, 7.3) as configurable option

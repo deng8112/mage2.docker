@@ -2,6 +2,17 @@
 
 set -e
 
+getLogo() {
+    echo "                             _____      _            _             ";
+    echo "                            / __  \    | |          | |            ";
+    echo " _ __ ___   __ _  __ _  ___ \`' / /'  __| | ___   ___| | _____ _ __ ";
+    echo "| '_ \` _ \ / _\` |/ _\` |/ _ \  / /   / _\` |/ _ \ / __| |/ / _ \ '__|";
+    echo "| | | | | | (_| | (_| |  __/./ /___| (_| | (_) | (__|   <  __/ |   ";
+    echo "|_| |_| |_|\__,_|\__, |\___|\_____(_)__,_|\___/ \___|_|\_\___|_|   ";
+    echo "                  __/ |                                            ";
+    echo "                 |___/                                             ";
+}
+
 createEnv() {
     if [[ ! -f ./.env ]]; then
         message "cp ./.env.template ./.env"
@@ -61,12 +72,38 @@ dockerRefresh() {
 }
 
 magentoComposerJson() {
+    message "docker exec -it $2 chown -R $1:$1 /home/$1;"
+    docker exec -it $2 chown -R $1:$1 /home/$1
+
+    message "docker exec -it-u $1 $2 composer global require hirak/prestissimo;"
+    docker exec -it $2 composer global require hirak/prestissimo
+
     if test ! -f "$3/composer.json"; then
         message "Magento 2 Fresh Install"
-        message "docker cp -a ./.docker/config_blueprints/composer.json $2:/home/$1/html/composer.json"
-        docker cp -a ./.docker/config_blueprints/composer.json $2:/home/$1/html/composer.json
+
+        [[ ! -z $5 ]] && VERSION="=$5" || VERSION="";
+
+        message "docker exec -it -u $1 $2 composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition${VERSION} .";
+        docker exec -it -u $1 $2 composer create-project --repository-url=https://repo.magento.com/ magento/project-community-edition${VERSION} .
+
+        message "docker exec -it -u $1 $2 composer require magepal/magento2-gmailsmtpapp"
+        docker exec -it -u $1 $2 composer require magepal/magento2-gmailsmtpapp
+        if [[ $4 == *"local"* ]]; then
+            message "docker exec -it -u $1 $2 composer require --dev vpietri/adm-quickdevbar mage2tv/magento-cache-clean allure-framework/allure-phpunit:1.2.3"
+            docker exec -it -u $1 $2 composer require --dev vpietri/adm-quickdevbar mage2tv/magento-cache-clean allure-framework/allure-phpunit ^1.2.3
+        else
+            message "docker exec -it -u $1 $2 composer update --no-dev;"
+            docker exec -it -u $1 $2 composer update --no-dev
+        fi
     else
-        message "composer.json found and will be used"
+        message "Magento 2 composer.json found"
+        if [[ $4 == *"local"* ]]; then
+            message "docker exec -it -u $1 $2 composer install;"
+            docker exec -it -u $1 $2 composer install
+        else
+            message "docker exec -it -u $1 $2 composer install --no-dev;"
+            docker exec -it -u $1 $2 composer install --no-dev
+        fi
     fi
 }
 
@@ -191,13 +228,6 @@ magentoRefresh() {
         message "docker exec -it -u $1 $2 bin/magento c:c;"
         docker exec -it -u $1 $2 bin/magento c:c
     fi
-    if [[ $3 != *"local"* ]]; then
-        message "docker exec -it -u $1 $2 bin/magento c:e full_page;"
-        docker exec -it -u $1 $2 bin/magento c:e full_page
-
-        message "docker exec -it -u $1 $2 bin/magento deploy:mode:set production;"
-        docker exec -it -u $1 $2 bin/magento deploy:mode:set production
-    fi
 }
 
 getMagerun() {
@@ -242,6 +272,8 @@ workDirCreate() {
     else
         message "Folder already exits"
     fi
+
+	chown -R $2:$2 $1;
 }
 
 setAuthConfig() {
@@ -298,15 +330,19 @@ specialPrompt() {
 
 rePlaceInEnv() {
     if [[ ! -z "$1" ]]; then
-        [[ "$1" == "yes" || "$1" == "y" ]] && value="true" || value=$1
-        pattern=".*$2.*"
-        replacement="$2=$value"
-        envFile="./.env"
-        if [[ $(uname -s) == "Darwin" ]]; then
-            sed -i "" "s@${pattern}@${replacement}@" ${envFile}
-        else
-            sed -i "s@${pattern}@${replacement}@" ${envFile}
-        fi
+        rePlaceIn $1 $2 "./.env"
+    fi
+}
+
+rePlaceIn() {
+    [[ "$1" == "yes" || "$1" == "y" ]] && value="true" || value=$1
+    pattern=".*$2.*"
+    replacement="$2=$value"
+    envFile="$3"
+    if [[ $(uname -s) == "Darwin" ]]; then
+        sed -i "" "s@${pattern}@${replacement}@" ${envFile}
+    else
+        sed -i "s@${pattern}@${replacement}@" ${envFile}
     fi
 }
 
@@ -319,9 +355,22 @@ prompt() {
 }
 
 message () {
-  echo "------------------------------------------------------------------------------"
+  echo "";
   echo -e "$1"
   echo "------------------------------------------------------------------------------"
+}
+
+productionModeOnLive() {
+    if [[ $3 != *"local"* ]]; then
+        message "docker exec -it -u $1 $2 bin/magento c:e full_page;"
+        docker exec -it -u $1 $2 bin/magento c:e full_page;
+
+        message "docker exec -it -u $1 $2 bin/magento c:c;"
+        docker exec -it -u $1 $2 bin/magento c:c;
+
+        message "docker exec -it -u $1 $2 bin/magento deploy:mode:set production;"
+        docker exec -it -u $1 $2 bin/magento deploy:mode:set production;
+    fi
 }
 
 showSuccess() {
@@ -342,24 +391,28 @@ http://$1"
 
 startAll=$(date +%s)
 
+getLogo
 createEnv
 . ${PWD}/.env
+message "Press [ENTER] alone to keep the current values"
 prompt "rePlaceInEnv" "Absolute path to empty folder(fresh install) or running project (current: ${WORKDIR})" "WORKDIR"
 prompt "rePlaceInEnv" "Domain Name (current: ${SHOPURI})" "SHOPURI"
 specialPrompt "Use Project DB [D]ump, [S]ample Data or [N]one of the above?"
 prompt "rePlaceInEnv" "Which PHP 7 Version? (7.1, 7.2, 7.3) (current: ${PHP_VERSION_SET})" "PHP_VERSION_SET"
 prompt "rePlaceInEnv" "Which MariaDB Version? (10.4.10, 10.5.2) (current: ${MARIADB_VERSION})" "MARIADB_VERSION"
+
+MAGE_LATEST="latest"
+read -p "Which Magento 2 Version? (current: ${MAGE_LATEST})" MAGENTO_VERSION
+
 prompt "rePlaceInEnv" "Create a login screen? (current: ${AUTH_CONFIG})" "AUTH_CONFIG"
 prompt "rePlaceInEnv" "enable Xdebug? (current: ${XDEBUG_ENABLE})" "XDEBUG_ENABLE"
-
 . ${PWD}/.env
 setAuthConfig ${AUTH_CONFIG} ${AUTH_USER} ${AUTH_PASS}
-workDirCreate ${WORKDIR}
+workDirCreate ${WORKDIR} ${USER}
 setComposerCache
 reMoveMagentoEnv ${USER} ${NAMESPACE}_nginx
 dockerRefresh  ${SHOPURI}
-magentoComposerJson ${USER} ${NAMESPACE}_nginx ${WORKDIR}
-composerPackagesInstall ${USER} ${NAMESPACE}_php ${SHOPURI}
+magentoComposerJson ${USER} ${NAMESPACE}_php ${WORKDIR} ${SHOPURI} ${MAGENTO_VERSION}
 installMagento ${USER} ${SHOPURI} ${NAMESPACE}_php ${NAMESPACE} ${MYSQL_USER} ${MYSQL_PASSWORD} ${SSL}
 exchangeMagentoEnv ${USER} ${NAMESPACE}_nginx
 DBDumpImport ${DB_DUMP} ${NAMESPACE} ${MYSQL_USER} ${MYSQL_PASSWORD} ${MYSQL_DATABASE}
@@ -368,6 +421,7 @@ createAdminUser ${USER} ${NAMESPACE}_php
 elasticConfig ${NAMESPACE} ${MYSQL_USER} ${MYSQL_PASSWORD} ${NAMESPACE}_db
 sampleDataInstall ${SAMPLE_DATA}
 magentoRefresh ${USER} ${NAMESPACE}_php ${SHOPURI} ${SAMPLE_DATA}
+productionModeOnLive ${USER} ${NAMESPACE}_php ${SHOPURI}
 getMagerun ${USER} ${NAMESPACE}_nginx ${SHOPURI}
 permissionsSet ${NAMESPACE}_nginx
 
