@@ -50,6 +50,9 @@ services:
       - composer_cache:/home/${USER}/.composer:delegated
 
   db:
+    context: ./.docker/mysql
+    args:
+      MARIADB_VERSION: ${MARIADB_VERSION}
     container_name: ${NAMESPACE}_db
     image: osioaliu/mariadb:${MARIADB_VERSION}
     environment:
@@ -122,6 +125,7 @@ services:
     working_dir: /home/$USER/html
     volumes:
       - app_data:/home/$USER/html:delegated
+      - pwa_data:/home/$USER/pwa:delegated
 
 volumes:
   php_socket:
@@ -133,4 +137,6 @@ volumes:
   composer_cache:
     external: true
   app_data:
+    external: true
+  pwa_data:
     external: true
