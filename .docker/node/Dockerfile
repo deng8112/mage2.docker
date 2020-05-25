@@ -3,7 +3,7 @@ FROM $IMAGE
 LABEL maintainer="Osiozekhai Aliu"
 
 RUN apk update && apk upgrade
-RUN apk add --no-cache yarn openssl git python sudo
+RUN apk add --no-cache yarn openssl git python sudo bash
 
 ENV GOSU_VERSION 1.12
 RUN set -eux; \
